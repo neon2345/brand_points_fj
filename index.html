@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>福建品牌点位展示</title>
+    <style>
+        html, body, #container {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        #sidebar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 300px;
+            height: 100%;
+            background: white;
+            padding: 10px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            z-index: 1;
+        }
+        #container {
+            margin-left: 300px;
+            width: calc(100% - 300px);
+        }
+        .point-info {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+        }
+        .point-info:hover {
+            background-color: #f5f5f5;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            transition: background-color 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+<div id="sidebar"></div>
+<div id="container"></div>
+<script type="text/javascript">
+    window._AMapSecurityConfig = {
+        securityJsCode:'8c9a26e733b197e9a8b86ea7baa3d592',
+    }
+</script>
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=2.0&key=05274d5027e6b22978b2ade4630f3596"></script>
+<script>
+    // 初始化地图
+    const map = new AMap.Map('container', {
+        zoom: 8,
+        center: [119.306239, 26.075302], // 福建省中心点位
+        viewMode: '2D'
+    });
+
+    // 从JSON文件加载数据
+    fetch('fj_part_brand_points.json')
+        .then(response => response.json())
+        .then(brandPoints => {
+            // 创建点标记和信息窗体
+            brandPoints.forEach(point => {
+                // 创建点标记
+                const marker = new AMap.Marker({
+                    position: point.location,
+                    map: map
+                });
+
+                // 创建信息窗体
+                const infoWindow = new AMap.InfoWindow({
+                    content: `<div>
+                                <p><strong>名称：</strong>${point.name}</p>
+                                <p><strong>附近品牌个数：</strong>${point.type}</p>
+                             </div>`,
+                    offset: new AMap.Pixel(0, -30)
+                });
+
+                // 点击事件
+                marker.on('click', () => {
+                    infoWindow.open(map, marker.getPosition());
+                    // 找到对应的侧边栏信息并滚动到顶部
+                    const sidebarInfo = document.querySelector(`[data-name="${point.name}"]`);
+                    if (sidebarInfo) {
+                        sidebarInfo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        // 添加高亮效果
+                        sidebarInfo.classList.add('highlight');
+                        // 1秒后移除高亮效果
+                        setTimeout(() => {
+                            sidebarInfo.classList.remove('highlight');
+                        }, 1000);
+                    }
+                });
+
+                // 在侧边栏添加信息
+                const sidebarInfo = document.createElement('div');
+                sidebarInfo.className = 'point-info';
+                // 添加data-name属性用于标识
+                sidebarInfo.setAttribute('data-name', point.name);
+                sidebarInfo.innerHTML = `
+                    <h3>${point.name}</h3>
+                    <p><strong>城市：</strong>${point.city}</p>
+                    <p><strong>区县：</strong>${point.district}</p>
+                    <p><strong>聚集品牌：</strong>${point.all_name}</p>
+                    <p><strong>周边TST(单位m)：</strong>${point.near_shop}</p>
+                `;
+                
+                // 点击侧边栏条目时定位到对应点位
+                sidebarInfo.addEventListener('click', () => {
+                    map.setCenter(point.location);
+                    infoWindow.open(map, marker.getPosition());
+                });
+
+                document.getElementById('sidebar').appendChild(sidebarInfo);
+            });
+        })
+        .catch(error => console.error('Error loading brand points:', error));
+</script>
+</body>
+</html>
